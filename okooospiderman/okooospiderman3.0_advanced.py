@@ -29,6 +29,8 @@
 #另外每场比赛的威廉应该会被爬两次，不过不影响大局，如果再细抠可能就是这里了。
 #当运行了一天之后，会出现一个错误，叫做OSError: [Errno 24] Too many open files
 #另外随着程序的运行，内存占用也越积越多
+#想到一个可能的方法是，将程序写成脚本，然后在python中使用linux命令，当内存达到一定程度时，暂停爬虫并停止mongodb服务，或许可以释放内存，不过还没尝试过————2018年2月28日
+#另一个可能的方法是，或许pymongo也有disconnect()的函数，或许及时断开与数据库的连接可以释放内存，不过还没尝试过————2018年2月28日
 from gevent import monkey;monkey.patch_all()
 import re
 import gevent
