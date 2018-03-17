@@ -339,14 +339,14 @@ def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一
         f.write('\n')
 
 
-def main():
+def main():#从打开首页到登录成功
     global header
     global r
     global proxylist
     error = True
     while error == True:
         try:
-            r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)
+            r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)#从首页开启会话
             error = False
         except Exception as e:
             print('main超时，正在重拨1')
