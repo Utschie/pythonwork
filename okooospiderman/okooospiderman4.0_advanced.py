@@ -3,6 +3,7 @@
 
 #本版本较3.0版本增加了断点续传、数据库写入文件以及内存释放的功能
 #同时此版本对程序启动和停止做了一些修改，方便断点续传和文件写入。
+#断点续传准备调试，linux开机自动挂载磁盘成功，下一步是安装mongodb并把mongodb默认存储位置放到work盘里————2018年8月31日
 from gevent import monkey;monkey.patch_all()
 import re
 import gevent
@@ -405,8 +406,8 @@ datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 while error == True:
     try:
+        n = 0
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
-            n = 0
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
             header['User-Agent'] = random.choice(UAlist)
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -444,7 +445,7 @@ while error == True:
                 dangtianbisai(i,beginpoint.startgame)#从断点比赛开始爬取数据，并在屏幕打印出用时
             else:
                 dangtianbisai(i)
-            n = n + 1
+            n = 1
             r.close()#关闭会话
             error = False
     except Exception as e:
