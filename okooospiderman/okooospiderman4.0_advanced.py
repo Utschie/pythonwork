@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+#_*_coding:utf-8_*_
+
 #本版本较3.0版本增加了断点续传、数据库写入文件以及内存释放的功能
 #同时此版本对程序启动和停止做了一些修改，方便断点续传和文件写入。
 from gevent import monkey;monkey.patch_all()
@@ -44,7 +46,7 @@ def checkip(ip):
 
 def dateRange(start, end, step=1, format="%Y-%m-%d"):#生成日期列表函数，用于给datelist赋值
     strptime, strftime = datetime.strptime, datetime.strftime
-    days = (strptime(end, format) - strptime(start, format)).days
+    days = (strptime(end, format) - strptime(start, format)).days + 1
     return [strftime(strptime(start, format) + timedelta(i), format) for i in range(0, days, step)]
 
 def ydm(filename):#把filepath传给它，他就能得到验证码的验证结果
@@ -217,7 +219,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
 
 
 
-def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
+def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
     global header
     global r
     global proxylist
@@ -242,7 +244,7 @@ def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一
     sucker1 = '/soccer/match/.*?/odds/'
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
     print(str(bisaiurl))
-    for i in range(0,len(bisaiurl)):#每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame,len(bisaiurl)):#每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -307,14 +309,18 @@ def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一
         f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endpoint - startpoint) + '秒' + '\n')
         f.write('\n')
 
+class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次
+    def __init__(self,logpath):
+        self.logpath = logpath
 
-def start():#开始函数,在程序运行最一开始时提取出断点，并传送给负责爬取的函数
-    startpoint = open('okooolog.txt').read()
-    if startpoint != '':
-        startdate = startpoint[0:7]#前八位是日期
-        startgame = startpoint[8:]#后面是比赛的序号
-    else:
-        pass
+    def startpoint(self):#开始函数,在程序运行最一开始时提取出断点，并传送给负责爬取的函数
+        logrecord = open(self.logpath).read()
+        if logrecord != '':
+            self.startdate = logrecord[0:9]#前八位是日期
+            self.startgame = int(logrecord[10:])#后面是比赛的序号
+        else:
+            self.startdate = datetime.now().strftime('%Y-%m-%d')
+            self.startgame = '0'
 
 
 def neicunshifang():#内存释放函数
@@ -392,12 +398,15 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-datelist = dateRange("2017-09-30", "2017-10-01")#生成一个日期列表
+logpath = 'okooolog.txt'
+beginpoint = Startpoint(logpath)#得到起始点信息
+datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 while error == True:
     try:
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
+            n = 0
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
             header['User-Agent'] = random.choice(UAlist)
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -431,7 +440,11 @@ while error == True:
                 ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)
             print('登录成功')
             print('准备进入：' + i)
-            dangtianbisai(i)#爬取当天数据，并在屏幕打印出用时
+            if n == 0:
+                dangtianbisai(i,beginpoint.startgame)#从断点比赛开始爬取数据，并在屏幕打印出用时
+            else:
+                dangtianbisai(i)
+            n = n + 1
             r.close()#关闭会话
             error = False
     except Exception as e:
