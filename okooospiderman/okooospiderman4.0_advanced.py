@@ -224,7 +224,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     global r
     global proxylist
     global UAlist
-    startpoint = time.time()
+    starttime = time.time()
     header3 = header
     header3['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header3['Upgrade-Insecure-Requests'] = '1'#这个也得加上
@@ -244,7 +244,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     sucker1 = '/soccer/match/.*?/odds/'
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
     print(str(bisaiurl))
-    for i in range(startgame,len(bisaiurl)):#每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -303,10 +303,10 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
         with open('okooolog.txt','w'):
             f.write(date+str(i))#在日志中记录下爬取进度
-    endpoint = time.time()
-    print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endpoint - startpoint) + '秒' + '\n')
+    endtime = time.time()
+    print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
     with open('/home/jsy/Dropbox/finished.txt',"at") as f:
-        f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endpoint - startpoint) + '秒' + '\n')
+        f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
         f.write('\n')
 
 class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次

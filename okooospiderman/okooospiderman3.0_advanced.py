@@ -32,8 +32,11 @@
 #另外随着程序的运行，内存占用也越积越多
 #想到一个可能的方法是，将程序写成脚本，然后在python中使用linux命令，当内存达到一定程度时，暂停爬虫并停止mongodb服务，或许可以释放内存，不过还没尝试过————2018年2月28日
 #另一个可能的方法是，或许pymongo也有disconnect()的函数，或许及时断开与数据库的连接可以释放内存，不过还没尝试过————2018年2月28日
+<<<<<<< current
 #云打码API用的是官网上YDMHTTP调用示例，已经改名为YDM放到Dropbox里了，以后如果换新系统重新配置环境，需要把Dropbox里的YDM放到python的搜索包的路径里。————2018年3月15日
 #新的4.0版本需要增加断点续传的功能————2018年8月9日
+=======
+>>>>>>> before discard
 from gevent import monkey;monkey.patch_all()
 import re
 import gevent
