@@ -3,8 +3,11 @@
 
 #本版本较3.0版本增加了断点续传、数据库写入文件以及内存释放的功能
 #同时此版本对程序启动和停止做了一些修改，方便断点续传和文件写入。
-#断点续传准备调试，linux开机自动挂载磁盘成功，下一步是安装mongodb并把mongodb默认存储位置放到work盘里————2018年8月31日
+#断点续传准备调试，linux开机自动挂载磁盘成功，下一步是安装mongodb并把mongodb默认存储位置放到database盘里————2018年8月31日
+#mongodb默认存储位置已更改，断点续传函数语法错误已消除，接下来将填加内存释放功能，并进行功能调试————20180906
+#
 from gevent import monkey;monkey.patch_all()
+import os
 import re
 import gevent
 import time
@@ -313,19 +316,25 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
 class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次
     def __init__(self,logpath):
         self.logpath = logpath
-
-    def startpoint(self):#开始函数,在程序运行最一开始时提取出断点，并传送给负责爬取的函数
-        logrecord = open(self.logpath).read()
-        if logrecord != '':
-            self.startdate = logrecord[0:9]#前八位是日期
-            self.startgame = int(logrecord[10:])#后面是比赛的序号
-        else:
+        log = open(self.logpath,'w')
+        try:
+            logrecord = log.read()
+            log.close()
+            if logrecord == '':
+                self.startdate = logrecord[0:9]#前八位是日期
+                self.startgame = int(logrecord[10:])#后面是比赛的序号
+            else:
+                self.startdate = datetime.now().strftime('%Y-%m-%d')
+                self.startgame = '0'
+        except Exception as e:
             self.startdate = datetime.now().strftime('%Y-%m-%d')
             self.startgame = '0'
 
 
-def neicunshifang():#内存释放函数
 
+
+def neicunshifang():#内存释放函数
+    pass
 
 def main():#从打开首页到登录成功
     global header
@@ -388,6 +397,7 @@ def main():#从打开首页到登录成功
 ####################################以下是主程序部分###########################################
 
 start = time.time()
+os.popen('mongod --config /etc/mongod.conf')
 client = MongoClient()
 db = client.okooo
 UAcontent = urllib.request.urlopen('file:///home/jsy/Dropbox/useragentswitcher.xml').read()
@@ -399,7 +409,7 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-logpath = 'okooolog.txt'
+logpath = '/mnt/db/mongodb/okooolog.txt'
 beginpoint = Startpoint(logpath)#得到起始点信息
 datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬

@@ -1,41 +1,8 @@
-#本爬虫结构：一个用户爬一天，一天之内一个ip爬三场比赛，一场比赛之内所有公司做一个协程。
-#最新版本基本上可以用了，唯一的问题是，会莫名其妙的卡住，程序完全停止，也不占用cpu，可能是gevent的问题
-#好像可能是遇到了死锁问题
-#还是考虑换scrapy吧
-#好像问题解决了，并不是gevent的问题，而是超时时间可能设置太短了。现在我把超时后的错误都让他们打印出些能标志他们位置的字来，问题就解决了——2017年10月29日
-#把插入数据库的collection名字改了一下，加上了日期，这样断点的时候比较容易找到上次在哪里停止————2017年12月11日
-#datatoDB环节有时出现不明原因的“datatoDB超时，正在重拨”一直循环，应设立跳出机制,然后把出问题的网页地址或者日期地址写入到一个日志里，等所有任务完成后再补上这些网页————2017年12月11日
-#dangtianbisai有时也出现上述问题
-#main也开始出现这样的问题
-#datatoDB函数中加了一个随机换UA，结果开始出现个别nonetype报错的情况了，我怀疑是有些UA是无效的，应该写一个checkUA函数,然后把UA列表更新一下
-#UA全部有效，还是报错，应该输出为日志————2017年12月11日
-#当一天爬取十几场比赛时，就会出现datatoDB超时的情况，并且越来越频繁，应该每10场或者15场比赛提取一组新的ip
-#检查ip的时候有时候会出现卡住的情况
-#中途换ip居然出现了问题
-#即便如此还是会出现datatoDB超时的情况，所以，我决定给设置重拨次数，当重拨超过一定次数后，直接跳过
-#另外ip检测通过率低的话，需要等待一段时间重新提取
-#其实dangtianbisai,main等函数也应该设置重拨次数限制
-#现在在考虑构造一个几百个ip的长效ip池不知道够不够用
-#另外，有的时候出现什么都没有就说爬取成功的情况，所以应该是代码有问题，让程序直接绕过其他部分，打印出爬取成功这句话。————2017年12月12日
-#上面的问题可能是在从威廉页面提取出其他公司链接的时候出错导致的
-#本程序再升级的话就是应该在checkip函数升一下级，首先缩短超时时间，然后应该每个ip尝试3次，三次都不行才被淘汰————2017年12月12日
-#其次，错误处理时应该把错误说明一并写到Errorlog里，否则难以知道是什么问题
-#不过此处有一个疑惑是，这个程序似乎没有释放内存，导致内存占用随着时间推移越积越多
-#今天又出现一个超级大bug，11月29日后面那些天明明威廉页面是有其他公司的，可是偏偏说从威廉中得不到url，即便是英超这种大比赛也出错————2017年12月13日
-#而且日期一出错就连着出错
-#还有一个问题就是，为什么出错时网址和出错信息会打印两遍——————因为代码中威廉的网址确实出现过两次，一次在下拉列表中，一次在下拉列表的下方，而且两次出现都不是datatoDB的规范格式
-#有些比赛是没有威廉的，比如谁11月29日的第六场，只有一条必发指数，此时放入出错是合理的，再比如说11月29日第15场，也是一个道理。
-#还有的比赛，比如11月29日第7场比赛，除了威廉，其他的赔率公司都有，这就很讨厌了。
-#现在基本上除了内存管理问题bug都改好了，唯一需要调的就可能是datatoDB的timeout，不知道是不是过短
-#另外每场比赛的威廉应该会被爬两次，不过不影响大局，如果再细抠可能就是这里了。
-#当运行了一天之后，会出现一个错误，叫做OSError: [Errno 24] Too many open files
-#另外随着程序的运行，内存占用也越积越多
-#想到一个可能的方法是，将程序写成脚本，然后在python中使用linux命令，当内存达到一定程度时，暂停爬虫并停止mongodb服务，或许可以释放内存，不过还没尝试过————2018年2月28日
-#另一个可能的方法是，或许pymongo也有disconnect()的函数，或许及时断开与数据库的连接可以释放内存，不过还没尝试过————2018年2月28日
+#!/usr/bin/env python
+#_*_coding:utf-8_*_
 
-#云打码API用的是官网上YDMHTTP调用示例，已经改名为YDM放到Dropbox里了，以后如果换新系统重新配置环境，需要把Dropbox里的YDM放到python的搜索包的路径里。————2018年3月15日
-#新的4.0版本需要增加断点续传的功能————2018年8月9日
-
+#本版本较4.0版本改为采用influxdb数据库以存储时间序列数据
+#断点续传准备调试，linux开机自动挂载磁盘成功，下一步是安装mongodb并把mongodb默认存储位置放到work盘里————2018年8月31日
 from gevent import monkey;monkey.patch_all()
 import re
 import gevent
@@ -79,7 +46,7 @@ def checkip(ip):
 
 def dateRange(start, end, step=1, format="%Y-%m-%d"):#生成日期列表函数，用于给datelist赋值
     strptime, strftime = datetime.strptime, datetime.strftime
-    days = (strptime(end, format) - strptime(start, format)).days
+    days = (strptime(end, format) - strptime(start, format)).days + 1
     return [strftime(strptime(start, format) + timedelta(i), format) for i in range(0, days, step)]
 
 def ydm(filename):#把filepath传给它，他就能得到验证码的验证结果
@@ -252,12 +219,12 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
 
 
 
-def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
+def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
     global header
     global r
     global proxylist
     global UAlist
-    startpoint = time.time()
+    starttime = time.time()
     header3 = header
     header3['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header3['Upgrade-Insecure-Requests'] = '1'#这个也得加上
@@ -277,7 +244,7 @@ def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一
     sucker1 = '/soccer/match/.*?/odds/'
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
     print(str(bisaiurl))
-    for i in range(0,len(bisaiurl)):#每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -334,11 +301,29 @@ def dangtianbisai(date):#在这之前需要先生成一个date列表，由于一
             companyurl[j] = 'http://www.okooo.com' + companyurl[j]
         coprocess(companyurl,date)
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
-    endpoint = time.time()
-    print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endpoint - startpoint) + '秒' + '\n')
+        with open('okooolog.txt','w'):
+            f.write(date+str(i))#在日志中记录下爬取进度
+    endtime = time.time()
+    print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
     with open('/home/jsy/Dropbox/finished.txt',"at") as f:
-        f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endpoint - startpoint) + '秒' + '\n')
+        f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
         f.write('\n')
+
+class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次
+    def __init__(self,logpath):
+        self.logpath = logpath
+
+    def startpoint(self):#开始函数,在程序运行最一开始时提取出断点，并传送给负责爬取的函数
+        logrecord = open(self.logpath).read()
+        if logrecord != '':
+            self.startdate = logrecord[0:9]#前八位是日期
+            self.startgame = int(logrecord[10:])#后面是比赛的序号
+        else:
+            self.startdate = datetime.now().strftime('%Y-%m-%d')
+            self.startgame = '0'
+
+
+def neicunshifang():#内存释放函数
 
 
 def main():#从打开首页到登录成功
@@ -413,11 +398,14 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-datelist = dateRange("2017-09-30", "2017-10-01")#生成一个日期列表
+logpath = 'okooolog.txt'
+beginpoint = Startpoint(logpath)#得到起始点信息
+datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 while error == True:
     try:
+        n = 0
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
             header['User-Agent'] = random.choice(UAlist)
@@ -452,7 +440,11 @@ while error == True:
                 ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)
             print('登录成功')
             print('准备进入：' + i)
-            dangtianbisai(i)#爬取当天数据，并在屏幕打印出用时
+            if n == 0:
+                dangtianbisai(i,beginpoint.startgame)#从断点比赛开始爬取数据，并在屏幕打印出用时
+            else:
+                dangtianbisai(i)
+            n = 1
             r.close()#关闭会话
             error = False
     except Exception as e:
