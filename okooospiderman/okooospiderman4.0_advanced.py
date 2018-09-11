@@ -5,7 +5,7 @@
 #同时此版本对程序启动和停止做了一些修改，方便断点续传和文件写入。
 #断点续传准备调试，linux开机自动挂载磁盘成功，下一步是安装mongodb并把mongodb默认存储位置放到database盘里————2018年8月31日
 #mongodb默认存储位置已更改，断点续传函数语法错误已消除，接下来将填加内存释放功能，并进行功能调试————20180906
-#
+#内存释放函数已写完，每天爬完都检查一次内存
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -22,6 +22,7 @@ import urllib
 import YDM
 import time
 import csv
+import psutil#用来获取内存使用信息以方便释放
 
 
 def checkip(ip):
@@ -334,7 +335,11 @@ class Startpoint(object):#定义起始点类，给出日志路径就能得到爬
 
 
 def neicunshifang():#内存释放函数
-    pass
+    mem = psutil.virtual_memory()
+    if mem.percent > 80.0:
+        os.popen('killall mongod')#杀死mongod进程
+        os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+
 
 def main():#从打开首页到登录成功
     global header
@@ -457,6 +462,7 @@ while error == True:
                 dangtianbisai(i)
             n = 1
             r.close()#关闭会话
+            neicunshifang()#每爬完一天检查内存情况
             error = False
     except Exception as e:
         print('IP不可用，需要重新提取')
