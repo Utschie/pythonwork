@@ -314,6 +314,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
         f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
         f.write('\n')
 
+
 class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次
     def __init__(self,logpath):
         self.logpath = logpath
@@ -330,7 +331,6 @@ class Startpoint(object):#定义起始点类，给出日志路径就能得到爬
         except Exception as e:
             self.startdate = datetime.now().strftime('%Y-%m-%d')
             self.startgame = '0'
-
 
 
 
