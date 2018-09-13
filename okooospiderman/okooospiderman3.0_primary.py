@@ -126,7 +126,7 @@ def datatoDB(url):#在coprocess里被执行,不同公司公用一个ip
     zhudui = re.search(sucker6,content3).group(1)
     kedui = re.search(sucker6,content3).group(2)
     collection = db[urlnum]
-    soup = BeautifulSoup(content3,"lxml")
+    soup = BeautifulSoup(content3,"html5lib")
     table = soup.table
     tr = table.find_all('tr')
     del tr[0],tr[0],tr[1]

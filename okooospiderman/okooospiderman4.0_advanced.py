@@ -7,6 +7,9 @@
 #mongodb默认存储位置已更改，断点续传函数语法错误已消除，接下来将填加内存释放功能，并进行功能调试————20180906
 #内存释放函数已写完，每天爬完都检查一次内存————20180912
 #就以往的而经验来讲会有一定比例的数据因出错超过三次而漏爬，可能需要加快换ip的频率，以及一些比赛“没有威廉”的问题需要得到处理————20180912
+#在修正了一些bug之后可以正常运行，但是断点续传功能没有成功运行,问题出在Startpoint类的文件读写上————20180913
+#修正了Startpoint类的bug，断点续传功能已经可以正常运行了，接下来就是看看长期的稳定性以及内存释放功能运行如何了————20180914
+
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -92,7 +95,7 @@ def login(datas):#把datas给它，它就能进行登录,不切换ip
     error = True
     while error == True:
         try:
-            denglu = r.post('http://www.okooo.com/I/?method=user.user.userlogin',headers = header2,verify=False,data = datas,allow_redirects=False,timeout = 16)#向对面服务器传送数据
+            denglu = r.post('http://www.okooo.com/I/?method=user.user.userlogin',headers = header2,verify=False,data = datas,allow_redirects=True,timeout = 16)#向对面服务器传送数据
             error = False
         except Exception as e:
             print('login超时，正在重拨')
@@ -101,7 +104,7 @@ def login(datas):#把datas给它，它就能进行登录,不切换ip
     error = True
     while error == True:
         try:
-            zuqiuzhongxin = r.get('http://www.okooo.com/soccer/',headers = header2,verify=False,allow_redirects=False,timeout = 16)#进入足球中心
+            zuqiuzhongxin = r.get('http://www.okooo.com/soccer/',headers = header2,verify=False,allow_redirects=True,timeout = 16)#进入足球中心
             error = False
         except Exception as e:
             print('login超时，正在重拨')
@@ -112,7 +115,7 @@ def login(datas):#把datas给它，它就能进行登录,不切换ip
     error = True
     while error == True:
         try:
-            zuqiurili = r.get('http://www.okooo.com/soccer/match/',headers = header2,verify=False,allow_redirects=False,timeout = 16)#进入足球日历,成功
+            zuqiurili = r.get('http://www.okooo.com/soccer/match/',headers = header2,verify=False,allow_redirects=True,timeout = 16)#进入足球日历,成功
             error = False
         except Exception as e:
             print('login超时，正在重拨')
@@ -141,7 +144,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
     mal = 1
     while (error3 == True and mal <= 4):#算上1次首拨和3次重拨，总共应该是4次
         try:
-            firma = r.get(url,headers = header4,verify=False,allow_redirects=False,timeout = 9.5)#进入单个公司赔率的网页
+            firma = r.get(url,headers = header4,verify=False,allow_redirects=True,timeout = 9.5)#进入单个公司赔率的网页
             content3 = firma.content.decode('GB18030')#获得该网页的代码
             #提取数据用beautifulsoup和re结合的方式比较靠谱
             sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/">'
@@ -155,7 +158,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
             zhudui = re.search(sucker6,content3).group(1)
             kedui = re.search(sucker6,content3).group(2)
             collection = db[date + '_'+ urlnum]
-            soup = BeautifulSoup(content3,"lxml")
+            soup = BeautifulSoup(content3,"html5lib")#'html5lib'容错率最高
             table = soup.table
             tr = table.find_all('tr')
             del tr[0],tr[0],tr[1]
@@ -209,6 +212,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
             error3 = False
         except Exception as e:
             if mal <= 3:
+                print('Error:',e)
                 print('datatoDB超时或出错，10秒后进行第'+ str(mal) + '次重拨')
                 r.proxies = random.choice(proxylist)#出错了才换ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
@@ -217,7 +221,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
                 error3 = True
             else:
                 print(url + '出错，跳过并写入Errorlog文件，重拨3次')
-                with open('/home/jsy/Dropbox/Errorlog_2.txt','a') as f:
+                with open('Errorlog.txt','a') as f:
                     f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
                     f.write('\n')
                 error3 = False
@@ -225,7 +229,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
 
 
 
-def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
+def dangtianbisai(date,startgame):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
     global header
     global r
     global proxylist
@@ -237,7 +241,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     error = True
     while error == True:
         try:
-            wangye = r.get('http://www.okooo.com/soccer/match/?date=' + date,headers = header3,verify=False,allow_redirects=False,timeout = 31)
+            wangye = r.get('http://www.okooo.com/soccer/match/?date=' + date,headers = header3,verify=False,allow_redirects=True,timeout = 31)
             error = False
         except Exception as e:
             print('dangtianbisai超时1，10秒后重拨')
@@ -249,8 +253,9 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     content1 = wangye.content.decode('gb18030')#取出wangye的源代码
     sucker1 = '/soccer/match/.*?/odds/'
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
+    print('从'+ date +'第'+ str(startgame+1) + '场比赛开始爬取')
     print(str(bisaiurl))
-    for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame+1,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -299,7 +304,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 error2 = True
         if (len(companyurl) < 3):
             print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlog文件')
-            with open('/home/jsy/Dropbox/Errorlog_2.txt','a') as f:
+            with open('Errorlog.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
             continue
@@ -307,7 +312,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             companyurl[j] = 'http://www.okooo.com' + companyurl[j]
         coprocess(companyurl,date)
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
-        with open('okooolog.txt','w'):
+        with open('okooolog.txt','w') as f:
             f.write(date+str(i))#在日志中记录下爬取进度
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
@@ -319,17 +324,18 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
 class Startpoint(object):#定义起始点类，给出日志路径就能得到爬去日期和比赛场次
     def __init__(self,logpath):
         self.logpath = logpath
-        log = open(self.logpath,'w')
+        log = open(self.logpath,'r')
         try:
-            logrecord = log.read()
+            logrecord = log.readline().strip('\n')
             log.close()
-            if logrecord == '':
-                self.startdate = logrecord[0:9]#前八位是日期
+            if logrecord != '':
+                self.startdate = logrecord[0:10]#前十位是日期
                 self.startgame = int(logrecord[10:])#后面是比赛的序号
             else:
                 self.startdate = datetime.now().strftime('%Y-%m-%d')
                 self.startgame = '0'
         except Exception as e:
+            print('Error:',e)
             self.startdate = datetime.now().strftime('%Y-%m-%d')
             self.startgame = '0'
 
@@ -349,7 +355,7 @@ def main():#从打开首页到登录成功
     error = True
     while error == True:
         try:
-            r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)#从首页开启会话
+            r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=True,timeout = 31)#从首页开启会话
             error = False
         except Exception as e:
             print('main超时，正在重拨1')
@@ -358,13 +364,13 @@ def main():#从打开首页到登录成功
     error = True
     while error == True:
         try:
-            yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=False,timeout = 31)#get请求登录的验证码
+            yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=True,timeout = 31)#get请求登录的验证码
             error = False
         except Exception as e:
             print('main超时，正在重拨2')
             r.proxies = random.choice(proxylist)
             error = True
-    filepath = '/home/jsy/screenshot/yanzhengma.png'
+    filepath = '/home/jsy/Dropbox/screenshot/yanzhengma.png'
     with open(filepath,"wb") as f:
         f.write(yanzhengma.content)#保存验证码到本地
     print('已获得验证码')
@@ -375,7 +381,7 @@ def main():#从打开首页到登录成功
         error = True
         while error == True:
             try:
-                r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)
+                r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=True,timeout = 31)
                 error = False
             except Exception as e:
                 print('main超时，正在重拨3')
@@ -384,7 +390,7 @@ def main():#从打开首页到登录成功
         error = True
         while error == True:
             try:
-                yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=False,timeout = 31)#get请求登录的验证码
+                yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=True,timeout = 31)#get请求登录的验证码
                 error = False
             except Exception as e:
                 print('main超时，正在重拨4')
@@ -415,7 +421,7 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-logpath = '/mnt/db/mongodb/okooolog.txt'
+logpath = 'okooolog.txt'
 beginpoint = Startpoint(logpath)#得到起始点信息
 datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
@@ -437,7 +443,7 @@ while error == True:
             r = requests.Session()#开启会话
             r.proxies = random.choice(proxylist)
             main()
-            ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
+            ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=True,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
             while ceshi.status_code != 200:
                 print('登录失败，正在重新登录')
                 time.sleep(10)
@@ -454,11 +460,11 @@ while error == True:
                 r = requests.Session()#开启会话
                 r.proxies = random.choice(proxylist)
                 main()
-                ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)
+                ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=True,timeout = 31)
             print('登录成功')
             print('准备进入：' + i)
             if n == 0:
-                dangtianbisai(i,beginpoint.startgame)#从断点比赛开始爬取数据，并在屏幕打印出用时
+                dangtianbisai(i,int(beginpoint.startgame))#从断点比赛开始爬取数据，并在屏幕打印出用时
             else:
                 dangtianbisai(i)
             n = 1
