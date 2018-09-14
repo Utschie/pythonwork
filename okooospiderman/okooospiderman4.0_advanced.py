@@ -229,7 +229,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
 
 
 
-def dangtianbisai(date,startgame):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
+def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
     global header
     global r
     global proxylist
@@ -426,9 +426,9 @@ beginpoint = Startpoint(logpath)#得到起始点信息
 datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
+n = 0
 while error == True:
     try:
-        n = 0
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
             header['User-Agent'] = random.choice(UAlist)
@@ -472,6 +472,7 @@ while error == True:
             neicunshifang()#每爬完一天检查内存情况
             error = False
     except Exception as e:
+        print('Error:',e)
         print('IP不可用，需要重新提取')
         time.sleep(15)
         error = True
