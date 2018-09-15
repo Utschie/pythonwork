@@ -215,20 +215,30 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
             print(url)
             error3 = False
         except Exception as e:
-            if mal <= 3:
-                print('Error:',e)
-                print('datatoDB超时或出错，10秒后进行第'+ str(mal) + '次重拨')
-                r.proxies = random.choice(proxylist)#出错了才换ip
-                header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
-                mal = mal + 1
-                time.sleep(10)
-                error3 = True
+            if str(e) == 'localhost:27017: [Errno 111] Connection refused':
+                os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+                with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
+                    f.write('内存释放一次')
+                print('内存释放一次，重启mongodb中')
+                time.sleep(40)
             else:
-                print(url + '出错，跳过并写入Errorlog文件，重拨3次')
-                with open('Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
-                    f.write('\n')
-                error3 = False
+                if mal <= 3:
+                    print('Error:',e)
+                    print('datatoDB超时或出错，10秒后进行第'+ str(mal) + '次重拨')
+                    r.proxies = random.choice(proxylist)#出错了才换ip
+                    header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
+                    mal = mal + 1
+                    time.sleep(10)
+                    error3 = True
+                else:
+                    print(url + '出错，跳过并写入Errorlog文件，重拨3次')
+                    with open('Errorlog.txt','a') as f:
+                        f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
+                        f.write('\n')
+                    error3 = False
+
+
+
 
 
 
@@ -318,13 +328,6 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
         with open('okooolog.txt','w') as f:
             f.write(date+str(i))#在日志中记录下爬取进度
-        if (i%100 == 0) and (i != 0):#每爬100场比赛重启一下mongodb
-            os.popen('killall mongod')#杀死mongod进程
-            os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
-            with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
-                f.write('内存释放一次')
-            print('内存释放一次，重启mongodb中')
-            time.sleep(15)
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
     with open('/home/jsy/Dropbox/finished.txt',"at") as f:
@@ -352,15 +355,15 @@ class Startpoint(object):#定义起始点类，给出日志路径就能得到爬
 
 
 
-#def neicunshifang():#内存释放函数
-#    mem = psutil.virtual_memory()
-#    if mem.percent > 65.0:
-#        os.popen('killall mongod')#杀死mongod进程
-#        os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
-#        with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','a') as f:
-#            f.write('内存释放一次')
-#        print('内存释放一次，重启mongodb中')
-#        time.sleep(30)
+def neicunshifang():#内存释放函数
+    mem = psutil.virtual_memory()
+    if mem.percent > 65.0:
+        os.popen('killall mongod')#杀死mongod进程
+        os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+        with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','a') as f:
+            f.write('内存释放一次')
+        print('内存释放一次，重启mongodb中')
+        time.sleep(40)
 
 
 def main():#从打开首页到登录成功
@@ -510,11 +513,7 @@ while error == True:
                 dangtianbisai(i)
             n = 1
             r.close()#关闭会话
-            os.popen('killall mongod')#每爬完一天杀死mongod进程
-            os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
-            with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
-                f.write('内存释放一次')
-            print('内存释放一次，重启mongodb中')
+            neicunshifang()
             error = False
     except Exception as e:
         print('Error:',e)
