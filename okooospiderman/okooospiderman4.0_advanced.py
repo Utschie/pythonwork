@@ -431,6 +431,8 @@ def main():#从打开首页到登录成功
 
 start = time.time()
 os.popen('mongod --config /etc/mongod.conf')
+print('启动mongodb')
+time.sleep(40)
 client = MongoClient()
 db = client.okooo
 UAcontent = urllib.request.urlopen('file:///home/jsy/Dropbox/useragentswitcher.xml').read()
