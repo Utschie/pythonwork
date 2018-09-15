@@ -13,6 +13,7 @@
 #因为登录是post的网址变成了http://www.okooo.com/I/?method=ok.user.login.login———20180915
 #可以通过每两个小时释放一次内存，重启一下mongodb来测试内存释放功能以及防止mongodb出错
 #最近ip可用率有点儿低，考虑改一下checkip函数，多给每个ip几次机会，因为也可能是网站的问题————20180915
+#mongodb老是意外关闭有点儿太操蛋了！！！—————20180916
 from gevent import monkey;monkey.patch_all()
 import os
 import re
