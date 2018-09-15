@@ -257,7 +257,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
     print('从'+ date +'第'+ str(startgame) + '场比赛开始爬取')
     print(str(bisaiurl))
-    for i in range(startgame+1,len(bisaiurl)+1):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame+1,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -268,7 +268,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             for j in range(0,len(proxylist)):
                 proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
-            while (len(proxylist) <=2):
+            while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
                 time.sleep(15)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
@@ -446,6 +446,17 @@ while error == True:
             for j in range(0,len(proxylist)):
                 proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
+            while (len(proxylist) <=3):
+                print('有效ip数目不足，需等待15秒重新提取')
+                time.sleep(15)
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                print('已获取IP')
+                proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
+                print('正在检查IP')
+                proxylist = checkip(proxylist)
+                for j in range(0,len(proxylist)):
+                    proxylist[j] = {"http":"http://" + proxylist[j],}
+                print(proxylist)
             r = requests.Session()#开启会话
             r.proxies = random.choice(proxylist)
             main()
