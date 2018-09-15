@@ -11,7 +11,7 @@
 #修正了Startpoint类的bug，断点续传功能已经可以正常运行了，接下来就是看看长期的稳定性以及内存释放功能运行如何了————20180914
 #又改了一些小bug，中间出现了一个问题，就是日期在一天一天地爬，但是日志却没有改变，是登录机制出现了问题————20180914
 #因为登录是post的网址变成了http://www.okooo.com/I/?method=ok.user.login.login———20180915
-
+#可以通过每两个小时释放一次内存，重启一下mongodb来测试内存释放功能以及防止mongodb出错
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -345,9 +345,13 @@ class Startpoint(object):#定义起始点类，给出日志路径就能得到爬
 
 def neicunshifang():#内存释放函数
     mem = psutil.virtual_memory()
-    if mem.percent > 80.0:
+    if mem.percent > 65.0:
         os.popen('killall mongod')#杀死mongod进程
         os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+        with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','a') as f:
+            f.write('内存释放一次')
+        print('内存释放一次，重启mongodb中')
+        time.sleep(30)
 
 
 def main():#从打开首页到登录成功
