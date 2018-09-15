@@ -12,6 +12,7 @@
 #又改了一些小bug，中间出现了一个问题，就是日期在一天一天地爬，但是日志却没有改变，是登录机制出现了问题————20180914
 #因为登录是post的网址变成了http://www.okooo.com/I/?method=ok.user.login.login———20180915
 #可以通过每两个小时释放一次内存，重启一下mongodb来测试内存释放功能以及防止mongodb出错
+#最近ip可用率有点儿低，考虑改一下checkip函数，多给每个ip几次机会，因为也可能是网站的问题————20180915
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -364,6 +365,7 @@ def main():#从打开首页到登录成功
             r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)#从首页开启会话
             error = False
         except Exception as e:
+            print('Error:',e)
             print('main超时，正在重拨1')
             r.proxies = random.choice(proxylist)
             error = True
@@ -373,6 +375,7 @@ def main():#从打开首页到登录成功
             yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=False,timeout = 31)#get请求登录的验证码
             error = False
         except Exception as e:
+            print('Error:',e)
             print('main超时，正在重拨2')
             r.proxies = random.choice(proxylist)
             error = True
@@ -390,6 +393,7 @@ def main():#从打开首页到登录成功
                 r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)
                 error = False
             except Exception as e:
+                print('Error:',e)
                 print('main超时，正在重拨3')
                 r.proxies = random.choice(proxylist)
                 error = True
@@ -446,7 +450,7 @@ while error == True:
             for j in range(0,len(proxylist)):
                 proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
-            while (len(proxylist) <=3):
+            while (len(proxylist) <=2):
                 print('有效ip数目不足，需等待15秒重新提取')
                 time.sleep(15)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
@@ -472,6 +476,17 @@ while error == True:
                 for l in range(0,len(proxylist)):
                     proxylist[l] = {"http":"http://"+ proxylist[l],}
                 print(proxylist)
+                while (len(proxylist) <=2):
+                    print('有效ip数目不足，需等待15秒重新提取')
+                    time.sleep(15)
+                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                    print('已获取IP')
+                    proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
+                    print('正在检查IP')
+                    proxylist = checkip(proxylist)
+                    for j in range(0,len(proxylist)):
+                        proxylist[j] = {"http":"http://" + proxylist[j],}
+                    print(proxylist)
                 header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
                 header['User-Agent'] = random.choice(UAlist)
                 r = requests.Session()#开启会话
