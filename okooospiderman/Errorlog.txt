@@ -6349,3 +6349,6 @@ http://www.okooo.com/soccer/match/1031094/odds/change/14/出错，跳过并写�
 http://www.okooo.com/soccer/match/1025442/odds/change/405/出错，跳过并写入Errorlog文件，重拨3次
 http://www.okooo.com/soccer/match/1025915/odds/change/24/出错，跳过并写入Errorlog文件，重拨3次
 /soccer/match/1035116/odds/，日期2018-09-01第197场比赛出错，没有威廉
+http://www.okooo.com/soccer/match/1005892/odds/change/234/出错，跳过并写入Errorlog文件，重拨3次
+http://www.okooo.com/soccer/match/1005892/odds/change/29/出错，跳过并写入Errorlog文件，重拨3次
+http://www.okooo.com/soccer/match/1009224/odds/change/14/出错，跳过并写入Errorlog文件，重拨3次

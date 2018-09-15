@@ -215,7 +215,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
             print(url)
             error3 = False
         except Exception as e:
-            if str(e) == 'localhost:27017: [Errno 111] Connection refused':
+            if (str(e) == 'localhost:27017: [Errno 111] Connection refused') or (str(e) == 'connection closed'):
                 os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
                 with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
                     f.write('内存释放一次')
