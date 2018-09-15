@@ -323,6 +323,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
                 f.write('内存释放一次')
             print('内存释放一次，重启mongodb中')
+            time.sleep(15)
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
     with open('/home/jsy/Dropbox/finished.txt',"at") as f:
