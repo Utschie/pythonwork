@@ -119,7 +119,7 @@ def login(datas):#把datas给它，它就能进行登录,不切换ip
     error = True
     while error == True:
         try:
-            denglu = r.post('http://www.okooo.com/I/?method=user.user.userlogin',headers = header2,verify=False,data = datas,allow_redirects=False,timeout = 16)#向对面服务器传送数据
+            denglu = r.post('http://www.okooo.com/I/?method=ok.user.login.login',headers = header2,verify=False,data = datas,allow_redirects=False,timeout = 16)#向对面服务器传送数据
             error = False
         except Exception as e:
             print('login超时，正在重拨')

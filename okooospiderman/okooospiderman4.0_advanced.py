@@ -9,7 +9,8 @@
 #就以往的而经验来讲会有一定比例的数据因出错超过三次而漏爬，可能需要加快换ip的频率，以及一些比赛“没有威廉”的问题需要得到处理————20180912
 #在修正了一些bug之后可以正常运行，但是断点续传功能没有成功运行,问题出在Startpoint类的文件读写上————20180913
 #修正了Startpoint类的bug，断点续传功能已经可以正常运行了，接下来就是看看长期的稳定性以及内存释放功能运行如何了————20180914
-#又改了一些小bug，中间出现了一个小问题，就是日期在一天一天地爬，但是日志却没有改变，好像是登录检验机制出现了问题————20180914
+#又改了一些小bug，中间出现了一个问题，就是日期在一天一天地爬，但是日志却没有改变，是登录机制出现了问题————20180914
+#很有可能是登录的验证码和实际验证码不一致————20180915
 
 from gevent import monkey;monkey.patch_all()
 import os
@@ -96,7 +97,7 @@ def login(datas):#把datas给它，它就能进行登录,不切换ip
     error = True
     while error == True:
         try:
-            denglu = r.post('http://www.okooo.com/I/?method=user.user.userlogin',headers = header2,verify=False,data = datas,allow_redirects=False,timeout = 16)#向对面服务器传送数据
+            denglu = r.post('http://www.okooo.com/I/?method=ok.user.login.login',headers = header2,verify=False,data = datas,allow_redirects=False,timeout = 16)#向对面服务器传送数据
             error = False
         except Exception as e:
             print('login超时，正在重拨')
