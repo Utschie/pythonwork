@@ -258,7 +258,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
     print('从'+ date +'第'+ str(startgame) + '场比赛开始爬取')
     print(str(bisaiurl))
-    for i in range(startgame+1,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
+    for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
             proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -317,6 +317,12 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
         with open('okooolog.txt','w') as f:
             f.write(date+str(i))#在日志中记录下爬取进度
+        if (i%100 == 0) and (i != 0):#每爬100场比赛重启一下mongodb
+            os.popen('killall mongod')#杀死mongod进程
+            os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+            with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
+                f.write('内存释放一次')
+            print('内存释放一次，重启mongodb中')
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
     with open('/home/jsy/Dropbox/finished.txt',"at") as f:
@@ -344,15 +350,15 @@ class Startpoint(object):#定义起始点类，给出日志路径就能得到爬
 
 
 
-def neicunshifang():#内存释放函数
-    mem = psutil.virtual_memory()
-    if mem.percent > 65.0:
-        os.popen('killall mongod')#杀死mongod进程
-        os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
-        with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','a') as f:
-            f.write('内存释放一次')
-        print('内存释放一次，重启mongodb中')
-        time.sleep(30)
+#def neicunshifang():#内存释放函数
+#    mem = psutil.virtual_memory()
+#    if mem.percent > 65.0:
+#        os.popen('killall mongod')#杀死mongod进程
+#        os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+#        with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','a') as f:
+#            f.write('内存释放一次')
+#        print('内存释放一次，重启mongodb中')
+#        time.sleep(30)
 
 
 def main():#从打开首页到登录成功
@@ -466,6 +472,7 @@ while error == True:
             main()
             ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
             while ceshi.status_code != 200:#'!=200'意味着重定向到了登录页面，登录页面的验证码请求是加密的其他url，无法从此登录
+                print(str(ceshi.status_code))
                 print('登录失败，正在重新登录')
                 time.sleep(10)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')#接入混拨代理
@@ -501,7 +508,11 @@ while error == True:
                 dangtianbisai(i)
             n = 1
             r.close()#关闭会话
-            neicunshifang()#每爬完一天检查内存情况
+            os.popen('killall mongod')#每爬完一天杀死mongod进程
+            os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
+            with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
+                f.write('内存释放一次')
+            print('内存释放一次，重启mongodb中')
             error = False
     except Exception as e:
         print('Error:',e)
