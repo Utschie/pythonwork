@@ -337,3 +337,4 @@ http://www.okooo.com/soccer/match/1019885/odds/change/794/出错，跳过并写�
 http://www.okooo.com/soccer/match/1019885/odds/change/325/出错，跳过并写入Errorlog文件，重拨3次
 http://www.okooo.com/soccer/match/1019885/odds/change/911/出错，跳过并写入Errorlog文件，重拨3次
 http://www.okooo.com/soccer/match/1019885/odds/change/280/出错，跳过并写入Errorlog文件，重拨3次
+http://www.okooo.com/soccer/match/1045305/odds/change/14/出错，跳过并写入Errorlog文件，重拨3次
