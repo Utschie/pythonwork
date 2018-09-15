@@ -1,5 +1,19 @@
 n = 0
-i = '2018-09-13'
+i = '2018-09-03'
+start = time.time()
+os.popen('mongod --config /etc/mongod.conf')
+client = MongoClient()
+db = client.okooo
+UAcontent = urllib.request.urlopen('file:///home/jsy/Dropbox/useragentswitcher.xml').read()
+UAcontent = str(UAcontent)
+UAname = re.findall('(useragent=")(.*?)(")',UAcontent)
+UAlist = list()
+for z in range(0,int(len(UAname))):
+    UAlist.append(UAname[z][1])
+
+UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
+UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
+logpath = 'okooolog.txt'
 header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
 header['User-Agent'] = random.choice(UAlist)
 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
@@ -9,11 +23,12 @@ print('正在检查IP')
 proxylist = checkip(proxylist)
 for j in range(0,len(proxylist)):
     proxylist[j] = {"http":"http://" + proxylist[j],}
+
 print(proxylist)
 r = requests.Session()#开启会话
 r.proxies = random.choice(proxylist)
 main()
-ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=True,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
+ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
 while ceshi.status_code != 200:
     print('登录失败，正在重新登录')
     time.sleep(10)
@@ -30,14 +45,16 @@ while ceshi.status_code != 200:
     r = requests.Session()#开启会话
     r.proxies = random.choice(proxylist)
     main()
-    ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=True,timeout = 31)
+    ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)
+
+
 print('登录成功')
 print('准备进入：' + i)
 starttime = time.time()
 header3 = header
 header3['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
 header3['Upgrade-Insecure-Requests'] = '1'#这个也得加上
-wangye = r.get('http://www.okooo.com/soccer/match/?date=' + i,headers = header3,verify=False,allow_redirects=True,timeout = 31)
+wangye = r.get('http://www.okooo.com/soccer/match/?date=' + i,headers = header3,verify=False,allow_redirects=False,timeout = 31)
 content1 = wangye.content.decode('gb18030')#取出wangye的源代码
 sucker1 = '/soccer/match/.*?/odds/'
 bisaiurl = re.findall(sucker1,content1)#获得当天的比赛列表
@@ -112,7 +129,7 @@ for i in range(0,len(s2)):#把剩余时间转化成分钟数
     match = re.match('赛前(.*?)小时(.*?)分',s2[i][1])
     s2[i][1] = int(match.group(1))*60 + int(match.group(2))#转化成据比赛开始前的剩余分钟数
 
-    
+
 for i in range(0,len(s2)):#每一次变盘就插入一个记录
     record = {}
     record['league'] = league
