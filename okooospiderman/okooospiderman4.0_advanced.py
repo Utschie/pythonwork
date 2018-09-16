@@ -215,7 +215,7 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
             print(url)
             error3 = False
         except Exception as e:
-            if (str(e) == 'localhost:27017: [Errno 111] Connection refused') or (str(e) == 'connection closed'):
+            if (str(e)[0:8] == 'localhost') or (str(e) == 'connection closed'):
                 os.popen('mongod --config /etc/mongod.conf')#重启mongod进程
                 with open('/home/jsy/Dropbox/pythonwork/okooospiderman/neicunlog.txt','w') as f:
                     f.write('内存释放一次')
@@ -236,11 +236,6 @@ def datatoDB(url,date):#在coprocess里被执行,不同公司公用一个ip
                         f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
                         f.write('\n')
                     error3 = False
-
-
-
-
-
 
 
 def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatoDB超时，所以决定每3场比赛重新提取一次IP
@@ -515,7 +510,6 @@ while error == True:
                 dangtianbisai(i)
             n = 1
             r.close()#关闭会话
-            neicunshifang()
             error = False
     except Exception as e:
         print('Error:',e)
