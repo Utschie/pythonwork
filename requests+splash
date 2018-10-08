@@ -1,0 +1,17 @@
+import json
+import requests
+lua_script = '''
+splash:go(args.url)
+splash:runjs("{javascript}")
+splash:wait(0.5)
+splash:runjs("{javascript}")
+splash:wait(0.5)
+splash:runjs("{javascript}")
+return splash:html()
+'''#脚本需要好几次下滑置底，还要给出等待js加载的时间
+script = "window.scrollTo(0,document.body.scrollHeight)"#以字符串形式写出脚本
+lua_script = lua_script.format(javascript = script)#将脚本加入lua_script
+headers = {'content-type':'application/json','User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
+args = {'lua_source':lua_script,'url':'http://odds.500.com/fenxi/shuju-738082.shtml','request.headers':headers}
+
+b = requests.post('http://0.0.0.0:8050/run',json = {'lua_source':lua_script,'url':'http://odds.500.com/fenxi/ouzhi-738082.shtml'})#必须用run接口

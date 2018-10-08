@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #_*_coding:utf-8_*_
 
-#本版本是尝试用influxdb
+#惊天好消息，找到了用代理上不去的方法，原因就是必须用https代理才行，http代理是不行的
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -29,7 +29,7 @@ def checkip(ip):
         mal3 = 1
         while (error4 ==True and mal3 <= 3):#总共拨三次，首拨1次重拨2次
             try:
-                check = requests.get('http://www.okooo.com/jingcai/',headers = header,proxies = {"http":"http://"+ iplist[i]},timeout = 6.5)
+                check = requests.get('http://www.okooo.com/jingcai/',headers = header,proxies = {"https":"https://"+ iplist[i]},timeout = 6.5)
             except Exception as e:
                 error4 = True
                 mal3 = mal3 + 1
@@ -261,7 +261,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             print('正在检查IP')
             proxylist = checkip(proxylist)
             for j in range(0,len(proxylist)):
-                proxylist[j] = {"http":"http://" + proxylist[j],}
+                proxylist[j] = {"https":"https://" + proxylist[j],}
             print(proxylist)
             while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
@@ -272,7 +272,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for j in range(0,len(proxylist)):
-                    proxylist[j] = {"http":"http://" + proxylist[j],}
+                    proxylist[j] = {"https":"https://" + proxylist[j],}
                 print(proxylist)
         time.sleep(random.uniform(1,3))#每场比赛爬去之间间隔1到3秒
         error2 = True
@@ -444,7 +444,7 @@ while error == True:
             print('正在检查IP')
             proxylist = checkip(proxylist)
             for j in range(0,len(proxylist)):
-                proxylist[j] = {"http":"http://" + proxylist[j],}
+                proxylist[j] = {"https":"https://" + proxylist[j],}
             print(proxylist)
             while (len(proxylist) <=2):
                 print('有效ip数目不足，需等待15秒重新提取')
@@ -455,7 +455,7 @@ while error == True:
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for j in range(0,len(proxylist)):
-                    proxylist[j] = {"http":"http://" + proxylist[j],}
+                    proxylist[j] = {"https":"https://" + proxylist[j],}
                 print(proxylist)
             r = requests.Session()#开启会话
             r.proxies = random.choice(proxylist)
@@ -471,7 +471,7 @@ while error == True:
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for l in range(0,len(proxylist)):
-                    proxylist[l] = {"http":"http://"+ proxylist[l],}
+                    proxylist[l] = {"https":"https://"+ proxylist[l],}
                 print(proxylist)
                 while (len(proxylist) <=2):
                     print('有效ip数目不足，需等待15秒重新提取')
@@ -482,7 +482,7 @@ while error == True:
                     print('正在检查IP')
                     proxylist = checkip(proxylist)
                     for j in range(0,len(proxylist)):
-                        proxylist[j] = {"http":"http://" + proxylist[j],}
+                        proxylist[j] = {"https":"https://" + proxylist[j],}
                     print(proxylist)
                 header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
                 header['User-Agent'] = random.choice(UAlist)
