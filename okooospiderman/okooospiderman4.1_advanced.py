@@ -5,6 +5,7 @@
 #把每天的比赛都写入一个json文件里
 #惊天情况！！！！！！！国外上不去澳客网了！！！！用讯代理也不行！！！！再等等————20180923
 #惊天好消息，找到了用代理上不去的方法，原因就是必须用https代理才行，http代理是不行的————20181008
+#好吧用了https代理也不行
 from gevent import monkey;monkey.patch_all()
 import os
 import re
