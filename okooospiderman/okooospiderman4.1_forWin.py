@@ -1,8 +1,8 @@
-#!/usr/bin/env python
-#_*_coding:utf-8_*_
-
 #为了在远程的windows机器上跑的版本
-#首先先把文件存储路径改掉
+#首先先把文件存储路径改掉，并把相应的三个文件复制到远程机器的D盘data文件夹下
+#'/home/jsy/Dropbox/okoookonto_new.csv'澳客网的账户,'file:///home/jsy/Dropbox/useragentswitcher.xml'UA列表
+#然后把YDM需要的东西放进路径(未完成)
+#把所有的https都改成了http。因为proxies的设置设置为http时在访问http网站时生效，在访问https网站时https生效
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -18,6 +18,7 @@ import urllib
 import YDM
 import time
 import csv
+import json#用来将字典写入json文件
 import psutil#用来获取内存使用信息以方便释放
 
 
@@ -29,7 +30,7 @@ def checkip(ip):
         mal3 = 1
         while (error4 ==True and mal3 <= 3):#总共拨三次，首拨1次重拨2次
             try:
-                check = requests.get('http://www.okooo.com/jingcai/',headers = header,proxies = {"https":"https://"+ iplist[i]},timeout = 6.5)
+                check = requests.get('http://www.okooo.com/jingcai/',headers = header,proxies = {"http":"http://"+ iplist[i]},timeout = 6.5)
             except Exception as e:
                 error4 = True
                 mal3 = mal3 + 1
@@ -61,7 +62,7 @@ def ydm(filename):#把filepath传给它，他就能得到验证码的验证结�
 
 def randomdatas(filename):#把filepath传给它，它就能得到一个随机的登录账户
     User = list()
-    with open('/home/jsy/Dropbox/okoookonto_new.csv',"r") as f:#打开文件,并按行读取，每行为一个列表
+    with open('D:\\data\\okoookonto_new.csv',"r") as f:#打开文件,并按行读取，每行为一个列表
          reader = csv.reader(f)
          for row in reader:
              User.append(row)
@@ -183,7 +184,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司公用一个ip
             for i in range(0,len(s2)):#把剩余时间转化成分钟数
                 match = re.match('赛前(.*?)小时(.*?)分',s2[i][1])
                 s2[i][1] = int(match.group(1))*60 + int(match.group(2))#转化成据比赛开始前的剩余分钟数
-            filepath = '/mnt/db/okooofile/'+date+'.json'
+            filepath = 'D:\\data\\okooofile\\'+date+'.txt'
             with open(filepath,'a') as f:
                 for i in range(0,len(s2)):#每一次变盘就插入一个记录
                     record = {}
@@ -200,7 +201,8 @@ def datatofile(url,date):#在coprocess里被执行,不同公司公用一个ip
                     record['gailv'] = [s2[i][5],s2[i][6],s2[i][7]]
                     record['kailizhishu'] = [s2[i][8],s2[i][9],s2[i][10]]
                     record['fanhuanlv'] = s2[i][11]
-                    f.write(record)
+                    record_str = str(record)
+                    f.write(record_str)
             print(url)
             error3 = False
         except Exception as e:
@@ -214,7 +216,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司公用一个ip
                 error3 = True
             else:
                 print(url + '出错，跳过并写入Errorlog文件，重拨3次')
-                with open('Errorlog.txt','a') as f:
+                with open('D:\\data\\Errorlog.txt','a') as f:
                     f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
                     f.write('\n')
                 error3 = False
@@ -257,7 +259,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             print('正在检查IP')
             proxylist = checkip(proxylist)
             for j in range(0,len(proxylist)):
-                proxylist[j] = {"https":"https://" + proxylist[j],}
+                proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
             while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
@@ -268,7 +270,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for j in range(0,len(proxylist)):
-                    proxylist[j] = {"https":"https://" + proxylist[j],}
+                    proxylist[j] = {"http":"http://" + proxylist[j],}
                 print(proxylist)
         time.sleep(random.uniform(1,3))#每场比赛爬去之间间隔1到3秒
         error2 = True
@@ -297,7 +299,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 error2 = True
         if (len(companyurl) < 3):
             print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlog文件')
-            with open('Errorlog.txt','a') as f:
+            with open('D:\\data\\Errorlog.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
             continue
@@ -305,11 +307,11 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             companyurl[j] = 'http://www.okooo.com' + companyurl[j]
         coprocess(companyurl,date)
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
-        with open('okooolog.txt','w') as f:
+        with open('D:\\data\\okooolog.txt','w') as f:
             f.write(date+str(i))#在日志中记录下爬取进度
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
-    with open('/home/jsy/Dropbox/finished.txt',"at") as f:
+    with open('D:\\data\\finished.txt',"at") as f:
         f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
         f.write('\n')
 
@@ -357,7 +359,7 @@ def main():#从打开首页到登录成功
             print('main超时，正在重拨2')
             r.proxies = random.choice(proxylist)
             error = True
-    filepath = '/home/jsy/Dropbox/screenshot/yanzhengma.png'
+    filepath = 'D:\\data\\yanzhengma.png'
     with open(filepath,"wb") as f:
         f.write(yanzhengma.content)#保存验证码到本地
     print('已获得验证码')
@@ -397,7 +399,7 @@ def main():#从打开首页到登录成功
 ####################################以下是主程序部分###########################################
 
 start = time.time()
-UAcontent = urllib.request.urlopen('file:///home/jsy/Dropbox/useragentswitcher.xml').read()
+UAcontent = urllib.request.urlopen('file:///D:/data/useragentswitcher.xml').read()
 UAcontent = str(UAcontent)
 UAname = re.findall('(useragent=")(.*?)(")',UAcontent)
 UAlist = list()
@@ -406,9 +408,9 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-logpath = 'okooolog.txt'
+logpath = 'D:\\data\\okooolog.txt'
 beginpoint = Startpoint(logpath)#得到起始点信息
-datelist = dateRange("2017-09-30", beginpoint.startdate)#生成一个到起始点信息的日期列表
+datelist = dateRange("2010-04-10", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 n = 0
@@ -423,7 +425,7 @@ while error == True:
             print('正在检查IP')
             proxylist = checkip(proxylist)
             for j in range(0,len(proxylist)):
-                proxylist[j] = {"https":"https://" + proxylist[j],}
+                proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
             while (len(proxylist) <=2):
                 print('有效ip数目不足，需等待15秒重新提取')
@@ -434,7 +436,7 @@ while error == True:
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for j in range(0,len(proxylist)):
-                    proxylist[j] = {"https":"https://" + proxylist[j],}
+                    proxylist[j] = {"http":"http://" + proxylist[j],}
                 print(proxylist)
             r = requests.Session()#开启会话
             r.proxies = random.choice(proxylist)
@@ -450,7 +452,7 @@ while error == True:
                 print('正在检查IP')
                 proxylist = checkip(proxylist)
                 for l in range(0,len(proxylist)):
-                    proxylist[l] = {"https":"https://"+ proxylist[l],}
+                    proxylist[l] = {"http":"http://"+ proxylist[l],}
                 print(proxylist)
                 while (len(proxylist) <=2):
                     print('有效ip数目不足，需等待15秒重新提取')
@@ -461,7 +463,7 @@ while error == True:
                     print('正在检查IP')
                     proxylist = checkip(proxylist)
                     for j in range(0,len(proxylist)):
-                        proxylist[j] = {"https":"https://" + proxylist[j],}
+                        proxylist[j] = {"http":"http://" + proxylist[j],}
                     print(proxylist)
                 header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
                 header['User-Agent'] = random.choice(UAlist)
