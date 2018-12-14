@@ -3,6 +3,11 @@
 #'/home/jsy/Dropbox/okoookonto_new.csv'澳客网的账户,'file:///home/jsy/Dropbox/useragentswitcher.xml'UA列表
 #然后把YDM需要的东西放进路径(未完成)
 #把所有的https都改成了http。因为proxies的设置设置为http时在访问http网站时生效，在访问https网站时https生效
+#偶尔会在获取验证码的时候卡死，即main2处，应该在此处添加一个重新获取ip登录账户的循环——20181208
+#dangtianbisai有时候会进不去，要重播几次才进得去，这里也有循环卡死的风险——20181209
+#main函数会出现无法获取验证码循环卡死的情况——20181209
+#在一天比赛过程中，三场比赛中间换ip的时候，有时候会出现提取的一组ip连续无效的情况，可能是因为checkip函数超时时间设太短了？当然更可能是讯代理那边的问题————20181209
+#应该添加一端重启程序的函数——20181209
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -350,15 +355,46 @@ def main():#从打开首页到登录成功
             r.proxies = random.choice(proxylist)
             error = True
     error = True
+    mal3 = 0
     while error == True:
         try:
             yanzhengma = r.get('http://www.okooo.com/I/?method=ok.user.settings.authcodepic',headers = header,verify=False,allow_redirects=False,timeout = 31)#get请求登录的验证码
             error = False
         except Exception as e:
-            print('Error:',e)
-            print('main超时，正在重拨2')
-            r.proxies = random.choice(proxylist)
-            error = True
+            if (mal3%3 != 0 or mal3 == 0):
+                mal3 = mal3 + 1
+                print('Error:',e)
+                print('main超时，正在进行第'+str(mal3)+'重拨2,')
+                r.proxies = random.choice(proxylist)
+                error = True
+            else:
+                print('main获取验证码失败，10秒后重启回话，重新提取ip')
+                r.close()
+                time.sleep(10)
+                header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
+                header['User-Agent'] = random.choice(UAlist)
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
+                print('已获取IP')
+                proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
+                print('正在检查IP')
+                proxylist = checkip(proxylist)
+                for j in range(0,len(proxylist)):
+                    proxylist[j] = {"http":"http://" + proxylist[j],}
+                print(proxylist)
+                while (len(proxylist) <=3):
+                    print('有效ip数目不足，需等待15秒重新提取')
+                    time.sleep(15)
+                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                    print('已获取IP')
+                    proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
+                    print('正在检查IP')
+                    proxylist = checkip(proxylist)
+                    for j in range(0,len(proxylist)):
+                        proxylist[j] = {"http":"http://" + proxylist[j],}
+                    print(proxylist)
+                r = requests.Session()#开启会话
+                r.proxies = random.choice(proxylist)
+                error = True           
     filepath = 'D:\\data\\yanzhengma.png'
     with open(filepath,"wb") as f:
         f.write(yanzhengma.content)#保存验证码到本地
@@ -427,7 +463,7 @@ while error == True:
             for j in range(0,len(proxylist)):
                 proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
-            while (len(proxylist) <=2):
+            while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
                 time.sleep(15)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
