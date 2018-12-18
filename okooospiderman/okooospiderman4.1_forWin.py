@@ -6,8 +6,14 @@
 #偶尔会在获取验证码的时候卡死，即main2处，应该在此处添加一个重新获取ip登录账户的循环——20181208
 #dangtianbisai有时候会进不去，要重播几次才进得去，这里也有循环卡死的风险——20181209
 #main函数会出现无法获取验证码循环卡死的情况——20181209
-#在一天比赛过程中，三场比赛中间换ip的时候，有时候会出现提取的一组ip连续无效的情况，可能是因为checkip函数超时时间设太短了？当然更可能是讯代理那边的问题————20181209
-#应该添加一端重启程序的函数——20181209
+#我怀疑在所有的UA列表中有些UA压根就是不能用的，应该统计一下————20181215
+#当出现Error“data does't match format......”的时候，应该不要再重播，以降低ip被ban率。已完成————20181217
+#另外，当出现Error"远程主机强制关闭了一个连接或者目标计算机积极拒绝"时应去除这个ip以提高成功爬取率。不行，这样就可能都删光了————20181217
+#有时格式不符的公司正是“威廉”，但也不总是。其实应该把格式不符的公司照抓
+#代理换成了蜻蜓代理，每次提取10个ip，试一下————20181217
+#曾经出现过login超时，应该也给加上次数限制重新提取ip
+#通过copy函数和copy库保证ip更换的正确使用。
+#通过减小重播间隔，增大重播次数来提高抓取率，甚至提高抓取速度————20181218
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -25,17 +31,20 @@ import time
 import csv
 import json#用来将字典写入json文件
 import psutil#用来获取内存使用信息以方便释放
-
+import copy #用来复制对象
 
 def checkip(ip):
     global header
+    global UAlist
+    header4 = header
     iplist = ip
     for i in range(0,len(iplist)):
         error4 = True
         mal3 = 1
         while (error4 ==True and mal3 <= 3):#总共拨三次，首拨1次重拨2次
             try:
-                check = requests.get('http://www.okooo.com/jingcai/',headers = header,proxies = {"http":"http://"+ iplist[i]},timeout = 6.5)
+                header4['User-Agent'] = random.choice(UAlist)#每尝试一次换一次UA
+                check = requests.get('http://www.okooo.com/jingcai/',headers = header4,proxies = {"http":"http://"+ iplist[i]},timeout = 6.5)
             except Exception as e:
                 error4 = True
                 mal3 = mal3 + 1
@@ -128,20 +137,25 @@ def coprocess(urllist,date):#用协程的方式并发打开其他公司，并爬
     gevent.joinall(ge)
 
 
-def datatofile(url,date):#在coprocess里被执行,不同公司公用一个ip
+def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
     global header
     global r
     global proxylist
     global UAlist
+    proxyzanshi = proxylist.copy()#必须用copy这个函数,否则proxylist也会随着proxyzanshi的改变而改变
+    copyr = copy.copy(r)#这样copyr.proxies的改变才不会影响r
     header4 = header
     header4['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header4['Upgrade-Insecure-Requests'] = '1'#这个也得加上
+    header4['User-Agent'] = random.choice(UAlist)
     error3 = True
     mal = 1
-    while (error3 == True and mal <= 4):#算上1次首拨和3次重拨，总共应该是4次
+    while (error3 == True and mal <= 5):#算上1次首拨和3次重拨，总共应该是4次
         try:
-            firma = r.get(url,headers = header4,verify=False,allow_redirects=False,timeout = 9.5)#进入单个公司赔率的网页
+            firma = copyr.get(url,headers = header4,verify=False,allow_redirects=False,timeout = 9.5)#进入单个公司赔率的网页
             content3 = firma.content.decode('GB18030')#获得该网页的代码
+            firma.close()#关闭连接
+            del(firma)#释放内存
             #提取数据用beautifulsoup和re结合的方式比较靠谱
             sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/">'
             sucker4 = '> <b>(.*?)</b>'
@@ -211,18 +225,26 @@ def datatofile(url,date):#在coprocess里被执行,不同公司公用一个ip
             print(url)
             error3 = False
         except Exception as e:
-            if mal <= 3:
+            if re.search('.*?赛前.*?',str(e)):
                 print('Error:',e)
-                print('datatofile超时或出错，10秒后进行第'+ str(mal) + '次重拨')
-                r.proxies = random.choice(proxylist)#出错了才换ip
+                print(url + '出错，跳过并写入Errorlog文件，格式不符')
+                with open('D:\\data\\Errorlog.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlog文件，格式不符')
+                    f.write('\n')
+                error3 = False
+            elif mal <= 4:
+                print('Error:',e)
+                print('datatofile超时或出错，2到3秒后进行第'+ str(mal) + '次重拨')
+                proxyzanshi.remove(copyr.proxies)#去掉刚才出错的ip
+                copyr.proxies = random.choice(proxyzanshi)#出错了才换ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
                 mal = mal + 1
-                time.sleep(10)
-                error3 = True
+                time.sleep(random.uniform(2,3))#随机休息
+                error3 = True    
             else:
-                print(url + '出错，跳过并写入Errorlog文件，重拨3次')
+                print(url + '出错，跳过并写入Errorlog文件，重拨4次')
                 with open('D:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，重拨3次')
+                    f.write(url + '出错，跳过并写入Errorlog文件，重拨4次')
                     f.write('\n')
                 error3 = False
 
@@ -238,6 +260,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     header3 = header
     header3['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header3['Upgrade-Insecure-Requests'] = '1'#这个也得加上
+    header3['User-Agent'] = random.choice(UAlist)
     error = True
     while error == True:
         try:
@@ -258,7 +281,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%3 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了3场比赛，需要重新提取新ip')
-            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
+            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨（蜻蜓）代理
             print('已获取IP')
             proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
             print('正在检查IP')
@@ -266,9 +289,10 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             for j in range(0,len(proxylist)):
                 proxylist[j] = {"http":"http://" + proxylist[j],}
             print(proxylist)
+            r.proxies = random.choice(proxylist)
             while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
-                time.sleep(15)
+                time.sleep(10)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
@@ -277,9 +301,11 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 for j in range(0,len(proxylist)):
                     proxylist[j] = {"http":"http://" + proxylist[j],}
                 print(proxylist)
+                r.proxies = random.choice(proxylist)
         time.sleep(random.uniform(1,3))#每场比赛爬去之间间隔1到3秒
         error2 = True
         mal2 = 1
+        proxyzanshi = proxylist.copy()
         while (error2 == True and mal2 <= 4):#1次首拨，3次重拨，共4次
             try:
                 william = r.get('http://www.okooo.com' + bisaiurl[i] + 'change/14/',headers = header3,timeout = 31)#打开威廉希尔
@@ -290,7 +316,8 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                     print('日期' + date + '第' + str(i) +'场比赛出错,无法从威廉源码中获取其他公司链接,10秒后重拨第'+ str(mal2) +'次')
                     mal2 = mal2 + 1
                     header3['User-Agent'] = random.choice(UAlist)#出错了才换UA
-                    r.proxies = random.choice(proxylist)#出错了才换ip
+                    proxyzanshi.remove(r.proxies)
+                    r.proxies = random.choice(proxyzanshi)#出错了才换ip
                     time.sleep(10)
                     error2 = True
                 else:
@@ -299,7 +326,8 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 print('dangtianbisai' + '进入' + bisaiurl[i] + '超时，10秒后重拨第' + str(mal2) +'次')
                 mal2 = mal2 + 1
                 header3['User-Agent'] = random.choice(UAlist)#出错了才换UA
-                r.proxies = random.choice(proxylist)#出错了才换ip
+                proxyzanshi.remove(r.proxies)
+                r.proxies = random.choice(proxyzanshi)#出错了才换ip
                 time.sleep(10)
                 error2 = True
         if (len(companyurl) < 3):
@@ -307,6 +335,8 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             with open('D:\\data\\Errorlog.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
+            with open('D:\\data\\okooolog.txt','w') as f:
+                f.write(date+str(i))#出错跳过的日期也要在日志中记录下爬取进度
             continue
         for j in range(0,len(companyurl)):
             companyurl[j] = 'http://www.okooo.com' + companyurl[j]
@@ -364,7 +394,7 @@ def main():#从打开首页到登录成功
             if (mal3%3 != 0 or mal3 == 0):
                 mal3 = mal3 + 1
                 print('Error:',e)
-                print('main超时，正在进行第'+str(mal3)+'重拨2,')
+                print('main超时，正在进行第'+str(mal3)+'次重拨2,')
                 r.proxies = random.choice(proxylist)
                 error = True
             else:
@@ -383,7 +413,7 @@ def main():#从打开首页到登录成功
                 print(proxylist)
                 while (len(proxylist) <=3):
                     print('有效ip数目不足，需等待15秒重新提取')
-                    time.sleep(15)
+                    time.sleep(10)
                     proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
                     print('已获取IP')
                     proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
@@ -465,7 +495,7 @@ while error == True:
             print(proxylist)
             while (len(proxylist) <=3):
                 print('有效ip数目不足，需等待15秒重新提取')
-                time.sleep(15)
+                time.sleep(10)
                 proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
@@ -478,7 +508,7 @@ while error == True:
             r.proxies = random.choice(proxylist)
             main()
             ceshi = r.get('http://www.okooo.com/soccer/match/?date=2017-01-01',headers = header,verify=False,allow_redirects=False,timeout = 31)#进入1月1日，看看有没有重定向，有的话需要重新登录
-            while ceshi.status_code != 200:#'!=200'意味着重定向到了登录页面，登录页面的验证码请求是加密的其他url，无法从此登录
+            while (ceshi.status_code != 200) and (ceshi.status_code != 203):#'!=200'意味着重定向到了登录页面，登录页面的验证码请求是加密的其他url，无法从此登录
                 print(str(ceshi.status_code))
                 print('登录失败，正在重新登录')
                 time.sleep(10)
@@ -490,9 +520,9 @@ while error == True:
                 for l in range(0,len(proxylist)):
                     proxylist[l] = {"http":"http://"+ proxylist[l],}
                 print(proxylist)
-                while (len(proxylist) <=2):
+                while (len(proxylist) <=3):
                     print('有效ip数目不足，需等待15秒重新提取')
-                    time.sleep(15)
+                    time.sleep(10)
                     proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
                     print('已获取IP')
                     proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
