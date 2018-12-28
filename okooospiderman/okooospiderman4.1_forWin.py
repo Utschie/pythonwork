@@ -14,7 +14,6 @@
 #曾经出现过login超时，应该也给加上次数限制重新提取ip
 #通过copy函数和copy库保证ip更换的正确使用。
 #通过减小重播间隔，增大重播次数来提高抓取率，甚至提高抓取速度————20181218
-#重播间隔在2-3秒之间和在1到4秒之间不知道哪一个会更好一点————20181219
 #应该把errorlog里的error都打上时间戳，然后用grafana连接errorlog监控爬虫性能————20181219
 from gevent import monkey;monkey.patch_all()
 import os
@@ -234,22 +233,29 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
                     f.write(url + '出错，跳过并写入Errorlog文件，格式不符')
                     f.write('\n')
                 error3 = False
+            elif re.search('.*?NoneType.*?groups',str(e)) and mal <= 4:
+                print('Error:',e)
+                print(url + '出错，跳过并写入Errorlog文件，NoneType')
+                with open('D:\\data\\Errorlog.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlog文件，NoneType')
+                    f.write('\n')
+                error3 = False
             elif re.search('.*?Read timed out.*?',str(e)) and mal <= 4:
                 print('Error:',e)
-                print('datatofile超时或出错，2到4秒后进行第'+ str(mal) + '次重拨')
+                print('datatofile超时或出错，2到3秒后进行第'+ str(mal) + '次重拨')
                 copyr.proxies = random.choice(proxyzanshi)#简单的超时不需要剔除ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
                 mal = mal + 1
-                time.sleep(random.uniform(2,4))#随机休息
+                time.sleep(random.uniform(2,3))#随机休息
                 error3 = True   
             elif re.search('.*?Max retries exceeded.*?',str(e)) and mal <= 4:
                 print('Error:',e)
-                print('datatofile超时或出错，2到4秒后进行第'+ str(mal) + '次重拨')
+                print('datatofile超时或出错，2到3秒后进行第'+ str(mal) + '次重拨')
                 proxyzanshi.remove(copyr.proxies)#去掉刚才出错的ip
                 copyr.proxies = random.choice(proxyzanshi)#出错了才换ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
                 mal = mal + 1
-                time.sleep(random.uniform(2,4))#随机休息
+                time.sleep(random.uniform(2,3))#随机休息
                 error3 = True    
             else:
                 print(url + '出错，跳过并写入Errorlog文件，重拨4次')
