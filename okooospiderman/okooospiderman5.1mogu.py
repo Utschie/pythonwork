@@ -1,20 +1,8 @@
-#为了在远程的windows机器上跑的版本
-#首先先把文件存储路径改掉，并把相应的三个文件复制到远程机器的D盘data文件夹下
-#'/home/jsy/Dropbox/okoookonto_new.csv'澳客网的账户,'file:///home/jsy/Dropbox/useragentswitcher.xml'UA列表
-#然后把YDM需要的东西放进路径(未完成)
-#把所有的https都改成了http。因为proxies的设置设置为http时在访问http网站时生效，在访问https网站时https生效
-#偶尔会在获取验证码的时候卡死，即main2处，应该在此处添加一个重新获取ip登录账户的循环——20181208
-#dangtianbisai有时候会进不去，要重播几次才进得去，这里也有循环卡死的风险——20181209
-#main函数会出现无法获取验证码循环卡死的情况——20181209
-#我怀疑在所有的UA列表中有些UA压根就是不能用的，应该统计一下————20181215
-#当出现Error“data does't match format......”的时候，应该不要再重播，以降低ip被ban率。已完成————20181217
-#另外，当出现Error"远程主机强制关闭了一个连接或者目标计算机积极拒绝"时应去除这个ip以提高成功爬取率。不行，这样就可能都删光了————20181217
-#有时格式不符的公司正是“威廉”，但也不总是。其实应该把格式不符的公司照抓
-#代理换成了蜻蜓代理，每次提取10个ip，试一下————20181217
-#曾经出现过login超时，应该也给加上次数限制重新提取ip
-#通过copy函数和copy库保证ip更换的正确使用。
-#通过减小重播间隔，增大重播次数来提高抓取率，甚至提高抓取速度————20181218
-#应该把errorlog里的error都打上时间戳，然后用grafana连接errorlog监控爬虫性能————20181219
+#此版本是在okooospiderman5.1_forWin的基础上用蘑菇代理的版本，用于双开终端加快爬取速度
+#把文件保存的位置放到E盘，试验成功后会放到移动硬盘上
+#把api改成蘑菇代理的api
+#不知道是不是蘑菇代理还是多开的原因，这个程序的ip特别容易被封
+#换成了讯代理，再测试一下
 #改成两场比赛换一次ip看看效率
 #两场比赛换一次ip速度比三场比赛换一场ip稍快一点，并且出错率低一些
 from gevent import monkey;monkey.patch_all()
@@ -79,7 +67,7 @@ def ydm(filename):#把filepath传给它，他就能得到验证码的验证结�
 
 def randomdatas(filename):#把filepath传给它，它就能得到一个随机的登录账户
     User = list()
-    with open('D:\\data\\okoookonto_new.csv',"r") as f:#打开文件,并按行读取，每行为一个列表
+    with open('F:\\data\\okoookonto_new.csv',"r") as f:#打开文件,并按行读取，每行为一个列表
          reader = csv.reader(f)
          for row in reader:
              User.append(row)
@@ -206,7 +194,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
             for i in range(0,len(s2)):#把剩余时间转化成分钟数
                 match = re.match('赛前(.*?)小时(.*?)分',s2[i][1])
                 s2[i][1] = int(match.group(1))*60 + int(match.group(2))#转化成据比赛开始前的剩余分钟数
-            filepath = 'D:\\data\\okooofile\\'+date+'.txt'
+            filepath = 'F:\\data\\okooofile\\'+date+'.txt'
             with open(filepath,'a') as f:
                 for i in range(0,len(s2)):#每一次变盘就插入一个记录
                     record = {}
@@ -231,14 +219,14 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
             if re.search('.*?赛前.*?',str(e)):
                 print('Error:',e)
                 print(url + '出错，跳过并写入Errorlog文件，格式不符')
-                with open('D:\\data\\Errorlog.txt','a') as f:
+                with open('F:\\data\\Errorlog.txt','a') as f:
                     f.write(url + '出错，跳过并写入Errorlog文件，格式不符')
                     f.write('\n')
                 error3 = False
             elif re.search('.*?NoneType.*?',str(e)) and mal <= 4:
                 print('Error:',e)
                 print(url + '出错，跳过并写入Errorlog文件，NoneType')
-                with open('D:\\data\\Errorlog.txt','a') as f:
+                with open('F:\\data\\Errorlog.txt','a') as f:
                     f.write(url + '出错，跳过并写入Errorlog文件，NoneType')
                     f.write('\n')
                 error3 = False
@@ -261,7 +249,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
                 error3 = True    
             else:
                 print(url + '出错，跳过并写入Errorlog文件，重拨4次')
-                with open('D:\\data\\Errorlog.txt','a') as f:
+                with open('F:\\data\\Errorlog.txt','a') as f:
                     f.write(url + '出错，跳过并写入Errorlog文件，重拨4次')
                     f.write('\n')
                 error3 = False
@@ -299,7 +287,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
     for i in range(startgame,len(bisaiurl)):#从断点开始（如果有的话）每场比赛换一个ip爬取,同时也换一个UA
         if (i%2 == 0 and i != 0):#如果是3的倍数且不等于零，则提取一组新ip
             print('已经爬了2场比赛，需要重新提取新ip')
-            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨（蜻蜓）代理
+            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1') #接入混拨（蜻蜓）代理
             print('已获取IP')
             proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
             print('正在检查IP')
@@ -311,7 +299,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
             while (len(proxylist) <=4):
                 print('有效ip数目不足，需等待10秒重新提取')
                 time.sleep(10)
-                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1')
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                 print('正在检查IP')
@@ -350,21 +338,21 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 error2 = True
         if (len(companyurl) < 3):
             print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlog文件')
-            with open('D:\\data\\Errorlog.txt','a') as f:
+            with open('F:\\data\\Errorlog.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
-            with open('D:\\data\\okooolog.txt','w') as f:
+            with open('F:\\data\\okooolog.txt','w') as f:
                 f.write(date+str(i))#出错跳过的日期也要在日志中记录下爬取进度
             continue
         for j in range(0,len(companyurl)):
             companyurl[j] = 'http://www.okooo.com' + companyurl[j]
         coprocess(companyurl,date)
         print('日期' + date + '第' + str(i) +'场比赛爬取成功')
-        with open('D:\\data\\okooolog.txt','w') as f:
+        with open('F:\\data\\okooolog.txt','w') as f:
             f.write(date+str(i))#在日志中记录下爬取进度
     endtime = time.time()
     print('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
-    with open('D:\\data\\finished.txt',"at") as f:
+    with open('F:\\data\\finished.txt',"at") as f:
         f.write('日期：' + date + '，当天比赛爬取成功' + '用时：' + str(endtime - starttime) + '秒' + '\n')
         f.write('\n')
 
@@ -421,7 +409,7 @@ def main():#从打开首页到登录成功
                 time.sleep(10)
                 header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
                 header['User-Agent'] = random.choice(UAlist)
-                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1') #接入混拨代理
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                 print('正在检查IP')
@@ -432,7 +420,7 @@ def main():#从打开首页到登录成功
                 while (len(proxylist) <=4):
                     print('有效ip数目不足，需等待15秒重新提取')
                     time.sleep(10)
-                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1')
                     print('已获取IP')
                     proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                     print('正在检查IP')
@@ -443,7 +431,7 @@ def main():#从打开首页到登录成功
                 r = requests.Session()#开启会话
                 r.proxies = random.choice(proxylist)
                 error = True           
-    filepath = 'D:\\data\\yanzhengma.png'
+    filepath = 'F:\\data\\yanzhengma.png'
     with open(filepath,"wb") as f:
         f.write(yanzhengma.content)#保存验证码到本地
     print('已获得验证码')
@@ -483,7 +471,7 @@ def main():#从打开首页到登录成功
 ####################################以下是主程序部分###########################################
 
 start = time.time()
-UAcontent = urllib.request.urlopen('file:///D:/data/useragentswitcher.xml').read()
+UAcontent = urllib.request.urlopen('file:///F:/data/useragentswitcher.xml').read()
 UAcontent = str(UAcontent)
 UAname = re.findall('(useragent=")(.*?)(")',UAcontent)
 UAlist = list()
@@ -492,9 +480,9 @@ for z in range(0,int(len(UAname))):
 
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
-logpath = 'D:\\data\\okooolog.txt'
+logpath = 'F:\\data\\okooolog.txt'
 beginpoint = Startpoint(logpath)#得到起始点信息
-datelist = dateRange("2015-12-12", beginpoint.startdate)#生成一个到起始点信息的日期列表
+datelist = dateRange("2010-04-10", beginpoint.startdate)#生成一个到起始点信息的日期列表
 datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 n = 0
@@ -503,7 +491,7 @@ while error == True:
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
             header['User-Agent'] = random.choice(UAlist)
-            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1') #接入混拨代理
+            proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1') #接入混拨代理
             print('已获取IP')
             proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
             print('正在检查IP')
@@ -514,7 +502,7 @@ while error == True:
             while (len(proxylist) <=4):
                 print('有效ip数目不足，需等待15秒重新提取')
                 time.sleep(10)
-                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1')
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                 print('正在检查IP')
@@ -530,7 +518,7 @@ while error == True:
                 print(str(ceshi.status_code))
                 print('登录失败，正在重新登录')
                 time.sleep(10)
-                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')#接入混拨代理
+                proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1')#接入混拨代理
                 print('已获取IP')
                 proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                 print('正在检查IP')
@@ -541,7 +529,7 @@ while error == True:
                 while (len(proxylist) <=4):
                     print('有效ip数目不足，需等待15秒重新提取')
                     time.sleep(10)
-                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=0a4b8956ad274e579822b533d27f79e1&returnType=1&count=1')
+                    proxycontent = requests.get('http://api.xdaili.cn/xdaili-api//privateProxy/applyStaticProxy?spiderId=4f85e66b7f9f4297b146af4df281cd13&returnType=1&count=1')
                     print('已获取IP')
                     proxylist = re.findall('(.*?)\\r\\n',proxycontent.text)
                     print('正在检查IP')
