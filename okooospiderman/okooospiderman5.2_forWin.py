@@ -1,4 +1,5 @@
 #本版本是最新版本，平均每天3.2GB，出错率平均每G输出不到180KB的Errorlog
+#终于明白为什么有时候爬取一段时间后会突然跳到之前的某一天了，因为第549行写的如果在中间换天的时候出现ip错误，程序会自动调回datelist的最开始进行循环，也就是上次暂停程序的时候
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -251,7 +252,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
 
 
 
-def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatofile超时，所以决定每3场比赛重新提取一次IP
+def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列表，由于一天只有一个IP会造成datatofile超时，所以决定每2场比赛重新提取一次IP
     global header
     global r
     global proxylist
@@ -475,12 +476,12 @@ for z in range(0,int(len(UAname))):
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
 logpath = 'D:\\data\\okooolog.txt'
-beginpoint = Startpoint(logpath)#得到起始点信息
-datelist = dateRange("2015-12-12", beginpoint.startdate)#生成一个到起始点信息的日期列表
-datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 n = 0
 while error == True:
+    beginpoint = Startpoint(logpath)#得到起始点信息
+    datelist = dateRange("2015-12-12", beginpoint.startdate)#生成一个到起始点信息的日期列表
+    datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
     try:
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
