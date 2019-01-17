@@ -1,5 +1,6 @@
 #本版本是最新版本，平均每天3.2GB，出错率平均每G输出不到180KB的Errorlog
 #终于明白为什么有时候爬取一段时间后会突然跳到之前的某一天了，因为第549行写的如果在中间换天的时候出现ip错误，程序会自动调回datelist的最开始进行循环，也就是上次暂停程序的时候
+#本次改动基于非常少见的main3卡死，给限定了错误次数————20190116
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -435,15 +436,18 @@ def main():#从打开首页到登录成功
         r = requests.Session()#开启会话
         r.proxies = random.choice(proxylist)#使用随机IP
         error = True
+        mal6 = 1
         while error == True:
             try:
                 r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)
                 error = False
             except Exception as e:
-                print('Error:',e)
-                print('main超时，正在重拨3')
-                r.proxies = random.choice(proxylist)
-                error = True
+                if mal6 < 6:#超过六次就main报错
+                    print('Error:',e)
+                    print('main超时，正在重拨3')
+                    r.proxies = random.choice(proxylist)
+                    mal6 = mal6 + 1
+                    error = True
         error = True
         while error == True:
             try:
