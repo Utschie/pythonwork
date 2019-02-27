@@ -16,7 +16,8 @@
 #通过减小重播间隔，增大重播次数来提高抓取率，甚至提高抓取速度————20181218
 #应该把errorlog里的error都打上时间戳，然后用grafana连接errorlog监控爬虫性能————20181219
 #改成两场比赛换一次ip看看效率
-#两场比赛换一次ip速度比三场比赛换一场ip稍快一点，并且出错率低一些
+#应该把更换header的语句也改成用copy的形式————失败了，反而会出现404错误
+#由于对面网页改版，程序出现大面积nonetype错误，errorlog大量增加，因此建立一个新的errorlog叫做errorlognew————20190123
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -146,7 +147,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
     global proxylist
     global UAlist
     proxyzanshi = proxylist.copy()#必须用copy这个函数,否则proxylist也会随着proxyzanshi的改变而改变
-    copyr = copy.copy(r)#这样copyr.proxies的改变才不会影响r
+    proxy = random.choice(proxyzanshi)
     header4 = header
     header4['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header4['Upgrade-Insecure-Requests'] = '1'#这个也得加上
@@ -155,12 +156,12 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
     mal = 1
     while (error3 == True and mal <= 5):#算上1次首拨和3次重拨，总共应该是4次
         try:
-            firma = copyr.get(url,headers = header4,verify=False,allow_redirects=False,timeout = 9.5)#进入单个公司赔率的网页
+            firma = r.get(url,headers = header4,verify=False,allow_redirects=False,timeout = 9.5,proxies=proxy)#进入单个公司赔率的网页
             content3 = firma.content.decode('GB18030')#获得该网页的代码
             firma.close()#关闭连接
             del(firma)#释放内存
             #提取数据用beautifulsoup和re结合的方式比较靠谱
-            sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/">'
+            sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/".*?>'
             sucker4 = '> <b>(.*?)</b>'
             sucker5 = '/schedule/">(.*?)</a>'
             sucker6 = 'odds/">(.*?) vs (.*?)</a>'
@@ -230,22 +231,22 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
         except Exception as e:
             if re.search('.*?赛前.*?',str(e)):
                 print('Error:',e)
-                print(url + '出错，跳过并写入Errorlog文件，格式不符')
-                with open('D:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，格式不符')
+                print(url + '出错，跳过并写入Errorlognew文件，格式不符')
+                with open('D:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，格式不符')
                     f.write('\n')
                 error3 = False
             elif re.search('.*?NoneType.*?',str(e)) and mal <= 4:
                 print('Error:',e)
-                print(url + '出错，跳过并写入Errorlog文件，NoneType')
-                with open('D:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，NoneType')
+                print(url + '出错，跳过并写入Errorlognew文件，NoneType')
+                with open('D:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，NoneType')
                     f.write('\n')
                 error3 = False
             elif re.search('.*?Read timed out.*?',str(e)) and mal <= 4:
                 print('Error:',e)
                 print('datatofile超时或出错，2到3秒后进行第'+ str(mal) + '次重拨')
-                copyr.proxies = random.choice(proxyzanshi)#简单的超时不需要剔除ip
+                proxy = random.choice(proxyzanshi)#简单的超时不需要剔除ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
                 mal = mal + 1
                 time.sleep(random.uniform(2,3))#随机休息
@@ -253,16 +254,16 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
             elif re.search('.*?Max retries exceeded.*?',str(e)) and mal <= 4:
                 print('Error:',e)
                 print('datatofile超时或出错，2到3秒后进行第'+ str(mal) + '次重拨')
-                proxyzanshi.remove(copyr.proxies)#去掉刚才出错的ip
-                copyr.proxies = random.choice(proxyzanshi)#出错了才换ip
+                proxyzanshi.remove(proxy)#去掉刚才出错的ip
+                proxy = random.choice(proxyzanshi)#出错了才换ip
                 header4['User-Agent'] = random.choice(UAlist)#出错了才换UA
                 mal = mal + 1
                 time.sleep(random.uniform(2,3))#随机休息
                 error3 = True    
             else:
-                print(url + '出错，跳过并写入Errorlog文件，重拨4次')
-                with open('D:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，重拨4次')
+                print(url + '出错，跳过并写入Errorlognew文件，重拨4次')
+                with open('D:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，重拨4次')
                     f.write('\n')
                 error3 = False
 
@@ -349,8 +350,8 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 time.sleep(10)
                 error2 = True
         if (len(companyurl) < 3):
-            print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlog文件')
-            with open('D:\\data\\Errorlog.txt','a') as f:
+            print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlognew文件')
+            with open('D:\\data\\Errorlognew.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
             with open('D:\\data\\okooolog.txt','w') as f:
@@ -493,12 +494,12 @@ for z in range(0,int(len(UAname))):
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
 logpath = 'D:\\data\\okooolog.txt'
-beginpoint = Startpoint(logpath)#得到起始点信息
-datelist = dateRange("2015-12-12", beginpoint.startdate)#生成一个到起始点信息的日期列表
-datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 n = 0
 while error == True:
+    beginpoint = Startpoint(logpath)#得到起始点信息
+    datelist = dateRange("2016-07-01", beginpoint.startdate)#生成一个到起始点信息的日期列表
+    datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
     try:
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
@@ -568,6 +569,7 @@ while error == True:
         print('Error:',e)
         print('IP不可用，需要重新提取')
         time.sleep(15)
+        n = 0
         error = True
 
 

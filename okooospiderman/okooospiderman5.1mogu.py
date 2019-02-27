@@ -4,7 +4,11 @@
 #不知道是不是蘑菇代理还是多开的原因，这个程序的ip特别容易被封
 #换成了讯代理，再测试一下
 #改成两场比赛换一次ip看看效率
-#两场比赛换一次ip速度比三场比赛换一场ip稍快一点，并且出错率低一些
+#今天main，正在重播3处第一次出现卡死现象，是在换天的时候出错的，应该限定各处的出错次数。————20190116
+#由于对面网页改版，程序出现大面积nonetype错误，errorlog大量增加，因此建立一个新的errorlog叫做errorlognew————20190123
+#修正了错误之后还会出现nonetype问题，其他字段都没有问题，所以怀疑可能是抓取变盘数据是match的nonetype，其实或许直接抓取变盘的绝对时间或许会更好，不过就先这样吧之后再补————20190123
+#为了能让它赶在周回来之前爬好一部分，临时改成让它怕2016年的数据————20190207
+#在main中重新获得验证码有时候会卡死，应限制重新获取验证码次数————20190209
 from gevent import monkey;monkey.patch_all()
 import os
 import re
@@ -134,7 +138,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
     global proxylist
     global UAlist
     proxyzanshi = proxylist.copy()#必须用copy这个函数,否则proxylist也会随着proxyzanshi的改变而改变
-    copyr = copy.copy(r)#这样copyr.proxies的改变才不会影响r
+    copyr = copy.copy(r)
     header4 = header
     header4['Referer'] = 'http://www.okooo.com/soccer/'#必须加上这个才能进入足球日历
     header4['Upgrade-Insecure-Requests'] = '1'#这个也得加上
@@ -148,7 +152,7 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
             firma.close()#关闭连接
             del(firma)#释放内存
             #提取数据用beautifulsoup和re结合的方式比较靠谱
-            sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/">'
+            sucker3 = '<a class="bluetxt" href="/soccer/match/(.*?)/odds/change/(.*?)/".*?>'
             sucker4 = '> <b>(.*?)</b>'
             sucker5 = '/schedule/">(.*?)</a>'
             sucker6 = 'odds/">(.*?) vs (.*?)</a>'
@@ -218,16 +222,16 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
         except Exception as e:
             if re.search('.*?赛前.*?',str(e)):
                 print('Error:',e)
-                print(url + '出错，跳过并写入Errorlog文件，格式不符')
-                with open('F:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，格式不符')
+                print(url + '出错，跳过并写入Errorlognew文件，格式不符')
+                with open('F:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，格式不符')
                     f.write('\n')
                 error3 = False
             elif re.search('.*?NoneType.*?',str(e)) and mal <= 4:
                 print('Error:',e)
-                print(url + '出错，跳过并写入Errorlog文件，NoneType')
-                with open('F:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，NoneType')
+                print(url + '出错，跳过并写入Errorlognew文件，NoneType')
+                with open('F:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，NoneType')
                     f.write('\n')
                 error3 = False
             elif re.search('.*?Read timed out.*?',str(e)) and mal <= 4:
@@ -248,9 +252,9 @@ def datatofile(url,date):#在coprocess里被执行,不同公司共用一个ip
                 time.sleep(random.uniform(2,3))#随机休息
                 error3 = True    
             else:
-                print(url + '出错，跳过并写入Errorlog文件，重拨4次')
-                with open('F:\\data\\Errorlog.txt','a') as f:
-                    f.write(url + '出错，跳过并写入Errorlog文件，重拨4次')
+                print(url + '出错，跳过并写入Errorlognew文件，重拨4次')
+                with open('F:\\data\\Errorlognew.txt','a') as f:
+                    f.write(url + '出错，跳过并写入Errorlognew文件，重拨4次')
                     f.write('\n')
                 error3 = False
 
@@ -337,8 +341,8 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 time.sleep(10)
                 error2 = True
         if (len(companyurl) < 3):
-            print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlog文件')
-            with open('F:\\data\\Errorlog.txt','a') as f:
+            print('日期' + date + '第' + str(i) +'场比赛出错，无法从威廉源码中获取其他公司链接,跳过并写入Errorlognew文件')
+            with open('F:\\data\\Errorlognew.txt','a') as f:
                 f.write(bisaiurl[i] + '，日期' + date + '第' + str(i) +'场比赛出错，没有威廉')
                 f.write('\n')
             with open('F:\\data\\okooolog.txt','w') as f:
@@ -440,15 +444,18 @@ def main():#从打开首页到登录成功
         r = requests.Session()#开启会话
         r.proxies = random.choice(proxylist)#使用随机IP
         error = True
+        mal6 = 1
         while error == True:
             try:
                 r.get('http://www.okooo.com/jingcai/',headers = header,verify=False,allow_redirects=False,timeout = 31)
                 error = False
             except Exception as e:
-                print('Error:',e)
-                print('main超时，正在重拨3')
-                r.proxies = random.choice(proxylist)
-                error = True
+                if mal6 < 3:
+                    print('Error:',e)
+                    print('main超时，正在重拨3')
+                    r.proxies = random.choice(proxylist)
+                    mal6 = mal6 + 1
+                    error = True               
         error = True
         while error == True:
             try:
@@ -481,12 +488,12 @@ for z in range(0,int(len(UAname))):
 UAlist = UAlist[0:586]#这样就得到了一个拥有586个UA的UA池
 UAlist.append('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')#再加一个
 logpath = 'F:\\data\\okooolog.txt'
-beginpoint = Startpoint(logpath)#得到起始点信息
-datelist = dateRange("2010-04-10", beginpoint.startdate)#生成一个到起始点信息的日期列表
-datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
 error = True
 n = 0
 while error == True:
+    beginpoint = Startpoint(logpath)#得到起始点信息
+    datelist = dateRange("2015-12-13", beginpoint.startdate)#生成一个到起始点信息的日期列表
+    datelist.reverse()#让列表倒序，使得爬虫从最近的一天往前爬
     try:
         for i in datelist:#开启一个循环，保证爬取每天的数据用的UA，IP，账户都不一样
             header = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}#设置UA假装是浏览器
@@ -556,6 +563,7 @@ while error == True:
         print('Error:',e)
         print('IP不可用，需要重新提取')
         time.sleep(15)
+        n = 0
         error = True
 
 
