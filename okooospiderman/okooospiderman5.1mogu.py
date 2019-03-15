@@ -322,7 +322,7 @@ def dangtianbisai(date,startgame = 0):#在这之前需要先生成一个date列�
                 content2 = william.content.decode('gb18030')
                 sucker2 = bisaiurl[i] + 'change/.*?/'
                 companyurl = re.findall(sucker2,content2)#从威廉的源码中获取其他公司的链接
-                if (len(companyurl) < 3 and mal <= 3):
+                if (len(companyurl) < 3 and mal2 <= 3):
                     print('日期' + date + '第' + str(i) +'场比赛出错,无法从威廉源码中获取其他公司链接,10秒后重拨第'+ str(mal2) +'次')
                     mal2 = mal2 + 1
                     header3['User-Agent'] = random.choice(UAlist)#出错了才换UA
